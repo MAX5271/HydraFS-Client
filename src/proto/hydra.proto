@@ -2,6 +2,16 @@ syntax = "proto3";
 
 package hydrafs;
 
+// NEW: The Health Check Blueprint
+message Heartbeat {
+    enum Status {
+        PING = 0;
+        PONG = 1;
+    }
+    Status status = 1;
+    uint64 timestamp = 2; // Useful for calculating network latency (RTT)
+}
+
 message FileShard {
     string filename = 1;      
     int32 shard_id = 2;       
