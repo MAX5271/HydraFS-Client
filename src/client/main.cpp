@@ -2,8 +2,8 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
-#include <thread>   // NEW: For sleep
-#include <chrono>   // NEW: For time units
+#include <thread>
+#include <chrono>  
 #include <boost/asio.hpp>
 #include "hydra.pb.h"
 
@@ -14,7 +14,7 @@ const std::string PI_IP = "10.42.0.122";
 const std::string PI_PORT = "8080";
 
 // ---------------------------------------------------------
-// FUNCTION: Check if the Pi is alive (The Pulse)
+// FUNCTION: Check if the Pi is alive and responsive to Heartbeat messages
 // ---------------------------------------------------------
 bool is_node_healthy(const std::string& ip, const std::string& port) {
     try {
@@ -36,7 +36,6 @@ bool is_node_healthy(const std::string& ip, const std::string& port) {
         // 2. Send Ping
         boost::asio::write(socket, boost::asio::buffer(out));
 
-        // 🟢 THE FIX: HALF-CLOSE
         // Signals the Pi that the message is done so its async_read finishes.
         socket.shutdown(tcp::socket::shutdown_send); 
 
@@ -84,21 +83,20 @@ void dispatch_shard(int shard_id, int total_shards, const std::vector<char>& dat
 
         boost::asio::write(socket, boost::asio::buffer(serialized_data));
         
-        // 🟢 THE FIX: HALF-CLOSE
+        // HALF-CLOSE to signal end of shard transmission
         socket.shutdown(tcp::socket::shutdown_send);
 
         std::cout << "[NETWORK] -> Dispatched Shard " << shard_id << "/" << total_shards 
                   << " (" << chunk_size << " bytes)" << std::endl;
 
     } catch (std::exception& e) {
-        // 🟢 THE FIX: EXCEPTION HANDLING
         // Prevents "Connection reset by peer" from crashing the whole program.
         std::cerr << "[NETWORK ERROR] Shard " << shard_id << " failed: " << e.what() << std::endl;
     }
 }
 
 // ---------------------------------------------------------
-// MAIN ENGINE: The Slicer
+// MAIN FUNCTION: Orchestrates the entire file transmission process
 // ---------------------------------------------------------
 int main() {
     const std::string filepath = "heavy_payload.bin";
@@ -133,9 +131,7 @@ int main() {
         dispatch_shard(current_shard, total_shards, buffer, bytes_read);
         current_shard++;
 
-        // 🟢 THE FIX: THROTTLING
-        // Give the Pi 100ms to breathe/write to disk between shards.
-        // This drastically reduces "Connection reset" errors.
+        // THROTTLING
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
