@@ -1,0 +1,3 @@
+build/
+*.bin
+secret_message.txt
